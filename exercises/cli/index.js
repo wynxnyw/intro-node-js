@@ -1,4 +1,3 @@
-// install any missing modules
 const program = require('commander')
 const { prompt } = require('inquirer')
 const {newContactPrompts} = require('./prompts')
