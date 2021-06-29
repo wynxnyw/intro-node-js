@@ -10,29 +10,49 @@ const path = require('path')
 const findAsset = (name) => {
   const assetPath = path.join(__dirname, 'assets', name)
   return fs.readFileSync(assetPath, {encoding: 'utf-8'}).toString()
+
+  return new Promise((resolve, reject) => {
+    fs.readFile(assetPath, (err, data) => {
+      if (err) reject(err);
+      resolve(data);
+    })
+  })
 }
 
 const hostname = '127.0.0.1'
 const port = 3000
+const router = {
+  GET: {
+    '/': {
+      asset: 'index.html',
+      type: 'text/html'
+    },
+    '/style.css': {
+      asset: 'style.css',
+      type: 'text/css'
+    }
+  }
+}
 
 // log incoming request coming into the server. Helpful for debugging and tracking
 const logRequest = (method, route, status) => console.log(method, route, status)
 
-const server = http.createServer((req, res) => {
+const server = http.createServer(async(req, res) => {
   const method = req.method
   const route = url.parse(req.url).pathname
-  // this is sloppy, especially with more assets, create a "router"
-  if (route === '/') {
-    res.writeHead(200, {'Content-Type': 'text/html'})
-    res.write(findAsset('index.html'))
-    logRequest(method, route, 200)
-    res.end()
-  } else {
-    // missing asset should not cause server crash
+  const routeMatch = router[method][route];
+
+  if (!routeMatch) {
+    res.writeHead(404, {'Content-Type': 'text/html'})
+    logRequest(method, route, 404)
     throw new Error('route not found')
     res.end()
   }
-  // most important part, send down the asset
+
+  res.writeHead(200, {'Content-Type': routeMatch.type})
+  res.write(await findAsset(routeMatch.asset))
+  logRequest(method, route, 200)
+  res.end()
 })
 
 server.listen(port, hostname, () => {
